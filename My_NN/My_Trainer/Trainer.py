@@ -40,6 +40,9 @@ class Trainer(object):
         self.visual_real_input_list = []
         self.visual_save_fuc_list = []
 
+        self.get_train_feed_dict = lambda : None
+        self.get_val_feed_dict = lambda : None
+
         self.summary_writer = None
 
 
@@ -60,7 +63,8 @@ class Trainer(object):
         self.save_info_dict[info_name] = []
 
     def set_clip_value(self,clip_value):
-        self.train_op = slim.learning.create_train_op(self.train_loss, self.optimizer,
+        with tf.variable_scope("clip_gradient_norm"):
+            self.train_op = slim.learning.create_train_op(self.train_loss, self.optimizer,
                                                   clip_gradient_norm=clip_value)
     def add_visual_info_ops(self,ops,net_input,real_input,save_fuc):
         self.visual_ops_list.append(ops)
@@ -75,6 +79,12 @@ class Trainer(object):
     def set_best_save_info(self,cmp_info_name,cmp_fuc):
         self.save_cmp_fuc = cmp_fuc
         self.save_cmp_info_name = cmp_info_name
+
+    def set_get_train_feed_dict(self, get_feed_dic_fuc):
+        self.get_train_feed_dict = get_feed_dic_fuc
+
+    def set_get_val_feed_dict(self, get_feed_dic_fuc):
+        self.get_val_feed_dict = get_feed_dic_fuc
 
     def set_summary_writer(self,merge_summary,summary_writer,iter_num):
         self.merge_summary = merge_summary
@@ -116,8 +126,7 @@ class Trainer(object):
                         sess_run_list.append(ops.ops)
                         run_info_ops_name.append(ops.ops_name)
                         run_info_visible_list.append(ops.visible)
-
-                sess_res = self.sess.run(sess_run_list)
+                sess_res = self.sess.run(sess_run_list,feed_dict = self.get_train_feed_dict())
                 sess_res = sess_res[1:]
                 train_info_print_line = "{0}/{1}: ".format(i+1, self.train_iter_num)
                 for j in range(len(sess_res)):
@@ -146,7 +155,7 @@ class Trainer(object):
 
                 if self.summary_writer is not None:
                     if i % self.summary_iter_num == 0:
-                        summary_data = self.sess.run(self.merge_summary)
+                        summary_data = self.sess.run(self.merge_summary,feed_dict = self.get_train_feed_dict())
                         self.summary_writer.add_summary(summary_data,e*self.epoch+i)
             print ""
             self.info_value_dict = {}
@@ -166,7 +175,7 @@ class Trainer(object):
                             sess_run_list.append(ops.ops)
                             run_info_ops_name.append(ops.ops_name)
 
-                    sess_res = self.sess.run(sess_run_list)
+                    sess_res = self.sess.run(sess_run_list,feed_dict = self.get_val_feed_dict())
                     # print run_info_ops_name, sess_res
                     for j in range(len(sess_res)):
                         tmp_value = sess_res[j]

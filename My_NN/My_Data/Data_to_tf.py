@@ -1,8 +1,8 @@
 import Queue
-import numpy as np
 import threading
-
+import numpy as np
 import tensorflow as tf
+from My_Log.Log_Manager import *
 
 
 class Data_To_TF(object):
